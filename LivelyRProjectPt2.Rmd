@@ -1,0 +1,194 @@
+---
+title: "LivelyRProjectPt2"
+author: "James Lively"
+date: "`r Sys.Date()`"
+output: html_document
+---
+# Data Prep
+```{r}
+library(picante)
+comm <- read.csv("grassland_data/grassland.community.csv", header = TRUE, row.names = 1)
+class(comm)
+dim(comm)
+rownames(comm)
+head(colnames(comm))
+comm[1:5, 1:5]
+apply(comm, 1, sum)
+comm <- decostand(comm, method = "total")
+apply(comm, 1, sum)
+comm[1:5, 1:5]
+traits <- read.csv("grassland_data/species.traits.csv", header = TRUE, row.names = 1)
+head(traits)
+pairs(traits)
+traits <- log10(traits)
+pairs(traits)
+metadata <- read.csv("grassland_data/plot.metadata.csv", header = TRUE, row.names = 1)
+head(metadata)
+phy <- read.tree("grassland_data/grassland.phylogeny.newick")
+phy
+names(phy)
+phy$tip.label[1:5]
+Ntip(phy)
+plot(phy, cex = 0.5)
+ls()
+combined <- match.phylo.comm(phy, comm)
+phy <- combined$phy
+comm <- combined$comm
+combined <- match.phylo.data(phy, traits)
+phy <- combined$phy
+traits <- combined$data
+all.equal(rownames(comm), rownames(metadata))
+```
+# Visualizing and Summarizing
+## Community Richness and Diversity
+### This boxplot compares the number of species among three different communities, these three communities are distinguished by their levels of relative moisture. This measure is known as species richness.
+```{r}
+boxplot(specnumber(comm) ~ metadata$rel.moisture, ylab = "# of species")
+```
+### ANOVA Test, since we are dealing with more than two communites we cannont use a t-test. ANOVA is used to compare the means of multiple groups (over two). We are using one independent variable, relative moisture, so we will use use the one-way ANOVA test.
+```{r}
+one.way <- aov(specnumber(comm) ~ metadata$rel.moisture, data=comm)
+summary(one.way)
+```
+
+### Collector's Curve, this analysis visualizes the total number of species that are discovered as the data is sampled.
+
+```{r}
+plot(specaccum(comm), xlab = "# of samples", ylab = "# of species")
+```
+
+# Multivariate Community Analysis
+
+## Hierarchical Clustering
+
+### Cluster Dendrogram, this analysis uses the Bray-Curtis dissimilarity of each sample's composition of species and clusters similar samples in a tree-like format.
+
+```{r}
+library(vegan)
+comm.bc.dist <- vegdist(comm, method = "bray")
+comm.bc.clust <- hclust(comm.bc.dist, method = "average")
+plot(comm.bc.clust, ylab = "Bray-Curtis dissimilarity")
+```
+
+## Ordination
+```{r}
+comm.bc.mds <- metaMDS(comm, dist = "bray")
+```
+### Stress plot, this visualizes the dissimilarities between the sample objects and the distances on a plot. It helps guide the starting point for subsequent clustering algorithms.   
+```{r}
+stressplot(comm.bc.mds)
+```
+
+### Ordination plots allow for the visualization of the spread of the data and can also be used to compare the environmental correlations to data ordination. Ordisurf is used to approximate the species abundance given a characteristic trait.
+```{r}
+ordiplot(comm.bc.mds, display = "sites", type = "text")
+ordipointlabel(comm.bc.mds)
+mds.fig <- ordiplot(comm.bc.mds, type = "none")
+points(mds.fig, "sites", pch = 19, col = "green", select = metadata$rel.moisture == "Relative Moisture")
+ordiellipse(comm.bc.mds, metadata$rel.moisture, conf = 0.95, label = TRUE)
+ordicluster(comm.bc.mds, comm.bc.clust, col = "gray")
+ordisurf(comm.bc.mds, comm[, "Sphaeralcea_coccinea"], bubble = TRUE, main = "Sphaeralcea coccinea abundance", cex = 3)
+ordiplot(comm.bc.mds)
+plot(envfit(comm.bc.mds, metadata[, 3:6]))
+
+```
+# Trait Evolution
+## Phylogenetic Signal
+### This Function is used to measure how well a specific phylogenic classification predicts the actual similarity among species. 
+
+```{r}
+apply(traits, 2, Kcalc, phy)
+multiPhylosignal(traits, multi2di(phy))
+
+```
+## Visualizing Trait Evolution
+### This function is used to make phylogenetic trees based on a specific measurable trait.
+
+```{r}
+plot(phy, direction = "up", show.tip.label = FALSE, show.node.label = TRUE, cex = 0.7)
+tiplabels(pch = 19, col = "black", cex = 3 * (traits[,"LeafArea"]/max(traits[, "LeafArea"])))
+```
+## Phylogenetic Analysis of Trait Relationships
+### Generalized Least Squares or GLS is used to consider the non-independence of a trait when testing for relationships among discrete (color, sex) or continuous variables (ex. weight).  
+
+```{r}
+root.gls <- gls(RootTissueDens ~ SRL, data = traits)
+anova(root.gls)
+root.pgls <- gls(RootTissueDens ~ SRL, correlation = corBrownian(value = 1, phy), data = traits)
+anova(root.pgls)
+plot(RootTissueDens ~ SRL, data = traits, xlab = "SRL (specific root length)", ylab = "Root tissue density")
+abline(coef(root.gls), lwd = 2, col = "black")
+abline(coef(root.pgls), lwd = 2, col = "red")
+legend("bottomleft", legend = c("GLS fit", "Phylogenetic GLS fit"), lwd = 2, col = c("black", "red"))
+```
+# Phylogenetic and Trait Diversity
+## Phylogenetic Diversity
+### Faith's PD index is used to compare the total branch length and species richness of a community. 
+
+```{r}
+comm.pd <- pd(comm, phy)
+head(comm.pd)
+boxplot(comm.pd$PD ~ metadata$rel.moisture, xlab = "Relative Moisture", ylab = "Faith's PD")
+one.way <- aov(comm.pd$PD ~ metadata$rel.moisture, data=comm)
+summary(one.way)
+plot(comm.pd$PD ~ comm.pd$SR, xlab = "Species richness", ylab = "Faith's PD")
+```
+## MPD, MNTD, SESMPD and SESMNTD
+### MPD, MNTD, SESMPD and SESMNTD are all used to compare the relatedness of average pairs in a community with what is predicted in a null model. MPD uses pairwise distances, MNTD uses the average distances between species, the SES variations are used to compare the difference between the observed relatedness vs the expected standardized by using the standard deviation of the phylogenetic mean for the null. 
+
+```{r}
+phy.dist <- cophenetic(phy)
+comm.sesmpd <- ses.mpd(comm, phy.dist, null.model = "richness", abundance.weighted = FALSE, runs = 999)
+head(comm.sesmpd)
+comm.sesmntd <- ses.mntd(comm, phy.dist, null.model = "richness", abundance.weighted = FALSE, runs = 999)
+head(comm.sesmntd)
+plot(comm.sesmpd$mpd.obs.z ~ metadata$rel.moisture, xlab = "Relative Moisture", ylab = "SES(MPD)")
+abline(h = 0, col = "gray")
+one.way <- aov(comm.sesmpd$mpd.obs.z ~ metadata$rel.moisture, data=comm)
+summary(one.way)
+plot(comm.sesmntd$mntd.obs.z ~ metadata$rel.moisture, xlab = "Relative Moisture", ylab = "SES(MNTD)")
+abline(h = 0, col = "gray")
+one.way <- aov(comm.sesmntd$mntd.obs.z ~ metadata$rel.moisture, data=comm)
+summary(one.way)
+plot(phy, show.tip.label = FALSE, main = "Fescue community fes-K-11")
+tiplabels(tip = which(phy$tip.label %in% colnames(comm)[comm["fes-K-11", ] > 0]), pch = 19)
+plot(phy, show.tip.label = FALSE, main = "Fescue community mix-H-23")
+tiplabels(tip = which(phy$tip.label %in% colnames(comm)[comm["mix-H-23", ] > 0]), pch = 19)
+```
+## Trait Diversity
+```{r}
+trait.dist <- as.matrix(dist(scale(traits), method = "euclidean"))
+comm.sesmpd.traits <- ses.mpd(comm, trait.dist, null.model = "richness", abundance.weighted = FALSE, runs = 999)
+plot(comm.sesmpd.traits$mpd.obs.z ~ metadata$rel.moisture, xlab = "Relative Moisture", ylab = "Trait SES(MPD)")
+abline(h = 0, col = "gray")
+```
+## Phylogenetic Beta-Diversity
+```{r}
+comm.mntd.dist <- comdistnt(comm, phy.dist, abundance.weighted = TRUE)
+comm.mntd.traits.dist <- comdistnt(comm, trait.dist, abundance.weighted = TRUE)
+mantel(comm.bc.dist, comm.mntd.dist)
+mantel(comm.bc.dist, comm.mntd.traits.dist)
+```
+## Phylogenetic/trait-based ordinations
+### NMDS Ordination tests allow for the comparison of the dissimilarity of data spreads based on different defining characteristics. It highlights whether there is a more accurate measure of dissimilarity.   
+
+```{r}
+comm.mntd.mds <- monoMDS(comm.mntd.dist)
+mds.fig <- ordiplot(comm.mntd.mds, type = "none")
+points(mds.fig, "sites", pch = 19, col = "green", select = metadata$rel.moisture == "Relative Moisture")
+ordiellipse(comm.mntd.mds, metadata$rel.moisture, conf = 0.95, label = TRUE)
+comm.mntd.traits.mds <- monoMDS(comm.mntd.traits.dist)
+mds.fig <- ordiplot(comm.mntd.traits.mds, type = "none")
+points(mds.fig, "sites", pch = 19, col = "green", select = metadata$Rel.moisture == "Relative Moisture")
+ordiellipse(comm.mntd.traits.mds, metadata$rel.moisture, conf = 0.95, label = TRUE)
+
+```
+## Testing for multivariate differences among groups
+
+### This Adonis analysis is able to use different dissimilarity measures and possilble origination variables to compare variance in the local and regional species diversity, or beta diversity.
+
+```{r}
+adonis(comm.bc.dist ~ rel.moisture, data = metadata)
+adonis(comm.mntd.dist ~ rel.moisture, data = metadata)
+adonis(comm.mntd.traits.dist ~ rel.moisture, data = metadata)
+```

@@ -1,0 +1,236 @@
+# PART A Univariate Statistics
+
+### Check for Normality
+
+#### Streptococcus bacteria
+
+```{r}
+d <- read.table("RTestData.txt", header=TRUE)
+
+plot(table(d$strep), type="h", lwd=4, ylab="Freq", xlab = "Values")
+qqnorm(d$strep, pch = 1, frame = FALSE)
+qqline(d$strep, col = "steelblue", lwd = 2)
+summary(d$strep)
+```
+#### Sqrt Tranformation Completed
+```{r}
+d$strep = sqrt(d$strep)
+plot(table(d$strep), type="h", lwd=4, ylab="Freq", xlab = "Values")
+qqnorm(d$strep, pch = 1, frame = FALSE)
+qqline(d$strep, col = "steelblue", lwd = 2)
+
+```
+
+####  Leptotrichia bacteria
+
+```{r}
+d <- read.table("RTestData.txt", header=TRUE)
+
+plot(table(d$lepto), type="h", lwd=4, ylab="Freq", xlab = "Values")
+qqnorm(d$lepto, pch = 1, frame = FALSE)
+qqline(d$lepto, col = "steelblue", lwd = 2)
+summary(d$lepto)
+```
+#### Sqrt Tranformation Completed
+```{r}
+d$lepto = sqrt(d$lepto)
+plot(table(d$lepto), type="h", lwd=4, ylab="Freq", xlab = "Values")
+qqnorm(d$lepto, pch = 1, frame = FALSE)
+qqline(d$lepto, col = "steelblue", lwd = 2)
+
+```
+
+####  Prevotella bacteria
+
+```{r}
+d <- read.table("RTestData.txt", header=TRUE)
+
+plot(table(d$prev), type="h", lwd=4, ylab="Freq", xlab = "Values")
+qqnorm(d$prev, pch = 1, frame = FALSE)
+qqline(d$prev, col = "steelblue", lwd = 2)
+summary(d$prev)
+```
+#### Sqrt Tranformation Completed
+```{r}
+d$prev = sqrt(d$prev)
+plot(table(d$prev), type="h", lwd=4, ylab="Freq", xlab = "Values")
+qqnorm(d$prev, pch = 1, frame = FALSE)
+qqline(d$prev, col = "steelblue", lwd = 2)
+
+```
+
+####  Fusobacteria bacteria
+
+```{r}
+d <- read.table("RTestData.txt", header=TRUE)
+
+plot(table(d$fuso), type="h", lwd=4, ylab="Freq", xlab = "Values")
+qqnorm(d$fuso, pch = 1, frame = FALSE)
+qqline(d$fuso, col = "steelblue", lwd = 2)
+summary(d$fuso)
+```
+#### Sqrt Tranformation Completed
+```{r}
+d$fuso = sqrt(d$fuso)
+plot(table(d$fuso), type="h", lwd=4, ylab="Freq", xlab = "Values")
+qqnorm(d$fuso, pch = 1, frame = FALSE)
+qqline(d$fuso, col = "steelblue", lwd = 2)
+
+```
+
+####  Percentage of Veillonella bacteria
+
+```{r}
+d <- read.table("RTestData.txt", header=TRUE)
+
+plot(table(d$veil), type="h", lwd=4, ylab="Freq", xlab = "Values")
+qqnorm(d$veil, pch = 1, frame = FALSE)
+qqline(d$veil, col = "steelblue", lwd = 2)
+summary(d$veil)
+```
+#### Sqrt Tranformation Completed
+```{r}
+d$veil = sqrt(d$veil)
+plot(table(d$veil), type="h", lwd=4, ylab="Freq", xlab = "Values")
+qqnorm(d$veil, pch = 1, frame = FALSE)
+qqline(d$veil, col = "steelblue", lwd = 2)
+
+```
+
+####  Depth of the deepest gum pocket in the mouth (in millimeters)
+
+```{r}
+d <- read.table("RTestData.txt", header=TRUE)
+
+plot(table(d$deepest), type="h", lwd=4, ylab="Freq", xlab = "Values")
+qqnorm(d$deepest, pch = 1, frame = FALSE)
+qqline(d$deepest, col = "steelblue", lwd = 2)
+summary(d$deepest)
+```
+#### No Tranformation Needed
+
+### One-way ANOVA/Summary/Boxplots
+
+#### Percentage of Streptococcus bacteria vs Time
+``` {r}
+one.way <- aov(strep~time, data=d)
+summary(one.way)
+boxplot(strep~time, data=d)
+```
+
+#### Percentage of Leptotrichia bacteria vs Time
+``` {r}
+one.way <- aov(lepto~time, data=d)
+summary(one.way)
+boxplot(lepto~time, data=d)
+```
+### Correlation analysis
+#### Strep vs. prev
+```{r}
+
+cor.test(d$strep, d$prev)
+```
+#### Strep vs. fuso
+
+```{r}
+
+cor.test(d$strep, d$fuso)
+
+```
+
+#### Fuso vs. lepto
+```{r}
+
+cor.test(d$fuso, d$lepto, data=d)
+
+```
+
+### Linear regressions
+#### Strep vs. Deepest
+```{r}
+d$strep=sqrt(d$strep)
+linr <- lm(strep~deepest, data=d)
+plot(strep~deepest, data=d)
+abline(linr)
+```
+
+#### Fuso vs. Deepest
+```{r}
+d$fuso=sqrt(d$fuso)
+linr <- lm(fuso~deepest, data=d)
+plot(fuso~deepest, data=d)
+abline(linr)
+```
+
+# Part B ggplot2
+
+#### Prev Histogram
+```{r}
+library(ggplot2)
+ggplot(d, aes(x=prev)) + geom_histogram(binwidth = 0.5)
+
+```
+#### Strep by Deepest Scatterplot
+```{r}
+ggplot(d, aes(x=strep, y=deepest)) + geom_point(aes(color=factor(time)))
+```
+#### Fuso by Deepest Scatterplot
+```{r}
+ggplot(d, aes(x=fuso, y=deepest)) + geom_point(aes(color=factor(time)))
+
+```
+
+#### Smoothed Fuso by Deepest Scatterplot
+```{r}
+ggplot(d, aes(x=fuso, y=deepest)) + geom_point(aes(color=factor(time))) + stat_smooth(method=lm)
+```
+
+# Part C Vegan analysis
+
+```{r}
+library(vegan)
+d <- read.table("RTestData.txt", header=TRUE)
+d.c = d[2:6] #converted from percent to number
+d.c
+```
+#### Alpha Diversity (Shannon)
+```{r}
+shannonvar <- diversity(d.c, "shannon")
+shannonvar
+```
+#### Rarefy/Plot
+```{r}
+indvabun <- rowSums(d.c)
+indvabun
+rarefacmin <- min(rowSums(d.c))
+rarefacmin
+
+
+```
+#### Bray-Curtis Dissimilarity Matrix and Histogram
+```{r}
+brayforrain <- vegdist(d.c, method = "bray")
+brayforrain
+hist(shannonvar)
+```
+####Multidimensional Scaling Plot (Bray-Curtis)
+```{r}
+NMDS.c.d <- metaMDS(comm = d.c, distance = "bray", trace = FALSE, autotransform = FALSE)
+plot(NMDS.c.d)
+```
+####Multidimensional Scaling Plot (Bray-Curtis) Status Colored
+```{r}
+MSP.xy <- data.frame(NMDS.c.d$points)
+MSP.xy$status <- d$status
+library(ggplot2)
+ggplot(MSP.xy, aes(MDS1, MDS2, color = status)) +
+  geom_point() + theme_bw()
+
+```
+####Multidimensional Scaling Plot (Bray-Curtis) Time Colored
+```{r}
+MSP.xy$time <- d$time
+ggplot(MSP.xy, aes(MDS1, MDS2, color = time)) +
+  geom_point() + theme_bw()
+
+```
